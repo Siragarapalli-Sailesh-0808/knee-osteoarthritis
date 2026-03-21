@@ -14,3 +14,4 @@ static/tests/
 # Exclude local helper files
 fix_env_and_run.bat
 Accuracy.txt
+*.log
