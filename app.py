@@ -6,6 +6,8 @@ import onnxruntime as ort
 import os
 import base64
 import uuid
+import tempfile
+import traceback
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -300,34 +302,39 @@ def get_output():
 	img_path = None
 
 	if request.method == 'POST':
-		img = request.files.get('my_image')
+		try:
+			img = request.files.get('my_image')
 
-		if img is None or img.filename == "":
-			error_message = "Please choose an image to upload."
-		elif not allowed_file(img.filename):
-			error_message = "Only PNG/JPG/JPEG/BMP files are supported."
-		else:
-			filename = secure_filename(img.filename)
-			upload_dir = os.path.join("/tmp", "uploads")
-			os.makedirs(upload_dir, exist_ok=True)
-			temp_filename = f"{uuid.uuid4().hex}_{filename}"
-			temp_img_path = os.path.join(upload_dir, temp_filename)
+			if img is None or img.filename == "":
+				error_message = "Please choose an image to upload."
+			elif not allowed_file(img.filename):
+				error_message = "Only PNG/JPG/JPEG/BMP files are supported."
+			else:
+				filename = secure_filename(img.filename)
+				upload_dir = os.path.join(tempfile.gettempdir(), "uploads")
+				os.makedirs(upload_dir, exist_ok=True)
+				temp_filename = f"{uuid.uuid4().hex}_{filename}"
+				temp_img_path = os.path.join(upload_dir, temp_filename)
 
-			try:
-				img.save(temp_img_path)
+				try:
+					img.save(temp_img_path)
 
-				with open(temp_img_path, "rb") as f:
-					encoded = base64.b64encode(f.read()).decode("ascii")
-				mime = img.mimetype if img.mimetype else "image/jpeg"
-				img_path = f"data:{mime};base64,{encoded}"
+					with open(temp_img_path, "rb") as f:
+						encoded = base64.b64encode(f.read()).decode("ascii")
+					mime = img.mimetype if img.mimetype else "image/jpeg"
+					img_path = f"data:{mime};base64,{encoded}"
 
-				predict_result, confidence = predict_label(temp_img_path)
-				ai_summary = generate_ai_summary(predict_result, confidence)
-			except Exception:
-				error_message = "Could not process this file. Please upload a valid image."
-			finally:
-				if os.path.exists(temp_img_path):
-					os.remove(temp_img_path)
+					predict_result, confidence = predict_label(temp_img_path)
+					ai_summary = generate_ai_summary(predict_result, confidence)
+				except Exception:
+					traceback.print_exc()
+					error_message = "Could not process this file. Please upload a valid image."
+				finally:
+					if os.path.exists(temp_img_path):
+						os.remove(temp_img_path)
+		except Exception:
+			traceback.print_exc()
+			error_message = "Upload failed due to a server issue. Please try again."
 
 
 		 
