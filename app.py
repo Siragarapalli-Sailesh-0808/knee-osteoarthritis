@@ -19,7 +19,7 @@ app = Flask(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp"}
 CONFIDENCE_THRESHOLD = 0.55
 MAX_REFERENCE_IMAGES = 200
-XRAY_DISTANCE_TOLERANCE = 1.2
+XRAY_DISTANCE_TOLERANCE = 1.05
 
 # Load your trained model
  
@@ -104,7 +104,7 @@ def build_xray_reference():
 	std_vec = np.std(feat_matrix, axis=0) + 1e-6
 	z = (feat_matrix - mean_vec) / std_vec
 	dists = np.sqrt(np.mean(z * z, axis=1))
-	strict_threshold = float(np.percentile(dists, 95) * XRAY_DISTANCE_TOLERANCE)
+	strict_threshold = float(np.percentile(dists, 90) * XRAY_DISTANCE_TOLERANCE)
 
 	return {
 		"mean": mean_vec,
@@ -122,16 +122,21 @@ def looks_like_xray(img_path):
 			rgb = pil_img.convert("RGB").resize((224, 224))
 			rgb_arr = np.array(rgb, dtype=np.float32) / 255.0
 
+		hsv_arr = np.array(rgb.convert("HSV"), dtype=np.float32) / 255.0
+		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
+		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
+
+		# Knee X-rays are near-grayscale. Colorful images (face/hand photos) are rejected early.
+		if mean_sat > 0.08 or channel_gap > 0.05:
+			return False
+
 		if XRAY_REFERENCE is not None:
 			feat = extract_xray_features(img_path)
 			z = (feat - XRAY_REFERENCE["mean"]) / XRAY_REFERENCE["std"]
 			dist = float(np.sqrt(np.mean(z * z)))
 			return dist <= XRAY_REFERENCE["threshold"]
 
-		hsv_arr = np.array(rgb.convert("HSV"), dtype=np.float32) / 255.0
-		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
-		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
-		return not (mean_sat > 0.15 and channel_gap > 0.08)
+		return True
 	except Exception:
 		return False
 
@@ -255,13 +260,6 @@ def generate_ai_summary(prediction, confidence):
 		"Sudden inability to bear weight or severe locking."
 	]
 
-	standout_features = [
-		"AI-based explanation of likely causes for the predicted stage.",
-		"Actionable precautions tailored to severity.",
-		"Confidence-aware next-step recommendations.",
-		"Urgent warning signs to support timely doctor visit."
-	]
-
 	return {
 		"prediction": prediction,
 		"confidence_percent": round(confidence * 100, 2),
@@ -271,7 +269,6 @@ def generate_ai_summary(prediction, confidence):
 		"precautions": base["precautions"],
 		"next_steps": base["next_steps"],
 		"red_flags": red_flags,
-		"standout_features": standout_features,
 		"disclaimer": "AI output is supportive information only, not a final medical diagnosis. Please consult an orthopedic specialist."
 	}
  
