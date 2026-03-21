@@ -5,7 +5,6 @@ __pycache__/
 
 # Exclude training/reference datasets and legacy model artifacts
 model/
-Test_samples/
 knee.h5
 
 # Exclude uploaded test artifacts

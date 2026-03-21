@@ -18,8 +18,8 @@ app = Flask(__name__)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp"}
 CONFIDENCE_THRESHOLD = 0.55
-MAX_REFERENCE_IMAGES = 400
-XRAY_DISTANCE_TOLERANCE = 1.05
+MAX_REFERENCE_IMAGES = 200
+XRAY_DISTANCE_TOLERANCE = 1.2
 
 # Load your trained model
  
@@ -71,25 +71,24 @@ def extract_xray_features(img_path):
 
 
 def build_xray_reference():
-	train_root = os.path.join("model", "train")
-	if not os.path.isdir(train_root):
-		return None
-
+	candidate_roots = [os.path.join("Test_samples"), os.path.join("model", "train")]
 	features = []
-	for class_name in sorted(os.listdir(train_root)):
-		class_dir = os.path.join(train_root, class_name)
-		if not os.path.isdir(class_dir):
+	for root in candidate_roots:
+		if not os.path.isdir(root):
 			continue
+		for dirpath, _, filenames in os.walk(root):
+			for filename in sorted(filenames):
+				if not allowed_file(filename):
+					continue
 
-		for filename in sorted(os.listdir(class_dir)):
-			if not allowed_file(filename):
-				continue
+				img_path = os.path.join(dirpath, filename)
+				try:
+					features.append(extract_xray_features(img_path))
+				except Exception:
+					continue
 
-			img_path = os.path.join(class_dir, filename)
-			try:
-				features.append(extract_xray_features(img_path))
-			except Exception:
-				continue
+				if len(features) >= MAX_REFERENCE_IMAGES:
+					break
 
 			if len(features) >= MAX_REFERENCE_IMAGES:
 				break
@@ -97,7 +96,7 @@ def build_xray_reference():
 		if len(features) >= MAX_REFERENCE_IMAGES:
 			break
 
-	if len(features) < 30:
+	if len(features) < 10:
 		return None
 
 	feat_matrix = np.stack(features)
@@ -105,7 +104,7 @@ def build_xray_reference():
 	std_vec = np.std(feat_matrix, axis=0) + 1e-6
 	z = (feat_matrix - mean_vec) / std_vec
 	dists = np.sqrt(np.mean(z * z, axis=1))
-	strict_threshold = float(np.percentile(dists, 90) * XRAY_DISTANCE_TOLERANCE)
+	strict_threshold = float(np.percentile(dists, 95) * XRAY_DISTANCE_TOLERANCE)
 
 	return {
 		"mean": mean_vec,
@@ -118,11 +117,21 @@ XRAY_REFERENCE = build_xray_reference()
 
 
 def looks_like_xray(img_path):
-	# Accept all image formats. The model and confidence threshold will filter out non-X-rays.
 	try:
 		with Image.open(img_path) as pil_img:
-			pass  # Just verify it's a valid image
-		return True
+			rgb = pil_img.convert("RGB").resize((224, 224))
+			rgb_arr = np.array(rgb, dtype=np.float32) / 255.0
+
+		if XRAY_REFERENCE is not None:
+			feat = extract_xray_features(img_path)
+			z = (feat - XRAY_REFERENCE["mean"]) / XRAY_REFERENCE["std"]
+			dist = float(np.sqrt(np.mean(z * z)))
+			return dist <= XRAY_REFERENCE["threshold"]
+
+		hsv_arr = np.array(rgb.convert("HSV"), dtype=np.float32) / 255.0
+		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
+		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
+		return not (mean_sat > 0.15 and channel_gap > 0.08)
 	except Exception:
 		return False
 
@@ -324,8 +333,11 @@ def get_output():
 					mime = img.mimetype if img.mimetype else "image/jpeg"
 					img_path = f"data:{mime};base64,{encoded}"
 
-					predict_result, confidence = predict_label(temp_img_path)
-					ai_summary = generate_ai_summary(predict_result, confidence)
+					if not looks_like_xray(temp_img_path):
+						error_message = "Please upload a valid knee X-ray image."
+					else:
+						predict_result, confidence = predict_label(temp_img_path)
+						ai_summary = generate_ai_summary(predict_result, confidence)
 				except Exception:
 					traceback.print_exc()
 					error_message = "Could not process this file. Please upload a valid image."
