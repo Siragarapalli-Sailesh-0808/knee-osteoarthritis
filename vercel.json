@@ -1,14 +1,4 @@
 {
-  "functions": {
-    "api/index.py": {
-      "excludeFiles": [
-        "model/**",
-        "Test_samples/**",
-        "knee.h5",
-        "static/tests/**"
-      ]
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
