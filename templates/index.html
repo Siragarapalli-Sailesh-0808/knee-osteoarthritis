@@ -123,18 +123,104 @@
 				   			   	 
 						<head>
               <script>
-         function previewImage() {
-             var file = document.getElementById("imagefile").files;
-             if (file.length > 0) {
-                 var fileReader = new FileReader();
-      
-                 fileReader.onload = function (event) {
-                     document.getElementById("preview").setAttribute("src", event.target.result);
-                 };
-      
-                 fileReader.readAsDataURL(file[0]);
+     function previewImage() {
+       var file = document.getElementById("imagefile").files;
+       if (file.length > 0) {
+         var fileReader = new FileReader();
+
+         fileReader.onload = function (event) {
+           document.getElementById("preview").setAttribute("src", event.target.result);
+         };
+
+         fileReader.readAsDataURL(file[0]);
+       }
+     }
+
+     function resizeImage(file, maxSide, quality) {
+       return new Promise(function(resolve, reject) {
+         var img = new Image();
+         var reader = new FileReader();
+
+         reader.onload = function(e) {
+           img.onload = function() {
+             var width = img.width;
+             var height = img.height;
+
+             if (width > height && width > maxSide) {
+               height = Math.round((height * maxSide) / width);
+               width = maxSide;
+             } else if (height > maxSide) {
+               width = Math.round((width * maxSide) / height);
+               height = maxSide;
              }
-         }
+
+             var canvas = document.createElement("canvas");
+             canvas.width = width;
+             canvas.height = height;
+
+             var ctx = canvas.getContext("2d");
+             ctx.drawImage(img, 0, 0, width, height);
+
+             canvas.toBlob(function(blob) {
+               if (!blob) {
+                 reject(new Error("Image compression failed"));
+                 return;
+               }
+               resolve(blob);
+             }, "image/jpeg", quality);
+           };
+
+           img.onerror = function() {
+             reject(new Error("Invalid image"));
+           };
+
+           img.src = e.target.result;
+         };
+
+         reader.onerror = function() {
+           reject(new Error("Unable to read file"));
+         };
+
+         reader.readAsDataURL(file);
+       });
+     }
+
+     async function submitCompressed(event) {
+       event.preventDefault();
+       var fileInput = document.getElementById("imagefile");
+       if (!fileInput.files || fileInput.files.length === 0) {
+         return false;
+       }
+
+       var originalFile = fileInput.files[0];
+       var submitBtn = document.getElementById("submitBtn");
+       submitBtn.disabled = true;
+       submitBtn.textContent = "Processing...";
+
+       try {
+         var compressedBlob = await resizeImage(originalFile, 1024, 0.75);
+         var uploadFile = new File([compressedBlob], "upload.jpg", { type: "image/jpeg" });
+
+         var formData = new FormData();
+         formData.append("my_image", uploadFile);
+
+         var response = await fetch("/submit", {
+           method: "POST",
+           body: formData
+         });
+
+         var html = await response.text();
+         document.open();
+         document.write(html);
+         document.close();
+       } catch (err) {
+         alert("Upload failed. Please try with a smaller image.");
+         submitBtn.disabled = false;
+         submitBtn.textContent = "Submit";
+       }
+
+       return false;
+     }
      </script>
      </head>
     <center>
@@ -167,7 +253,7 @@
              </div>
      </br>
          </br>
-             <form class="login100-form validate-form" action="/submit" method="POST" enctype="multipart/form-data">
+             <form id="uploadForm" class="login100-form validate-form" action="/submit" method="POST" enctype="multipart/form-data" onsubmit="return submitCompressed(event)">
                <div class="wrap-input100 validate-input m-b-26" data-validate="Username is required">
            <br>
                  <input class="input100" type="file" name="my_image" id="imagefile" class="btn" accept="image/*" onchange="previewImage();"  required>
@@ -181,7 +267,7 @@
     
             
            
-                 <button class="btn btn-primary" type="submit"> Submit </button>
+                 <button id="submitBtn" class="btn btn-primary" type="submit"> Submit </button>
                </div>
              </form>
            </div>
