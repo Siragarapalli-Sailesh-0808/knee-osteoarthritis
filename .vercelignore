@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.ipynb
+
+# Exclude training/reference datasets and legacy model artifacts
+model/
+Test_samples/
+knee.h5
+
+# Exclude uploaded test artifacts
+static/tests/
+
+# Exclude local helper files
+fix_env_and_run.bat
+Accuracy.txt
