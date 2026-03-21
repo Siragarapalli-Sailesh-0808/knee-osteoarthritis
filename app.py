@@ -19,7 +19,7 @@ app = Flask(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp"}
 CONFIDENCE_THRESHOLD = 0.55
 MAX_REFERENCE_IMAGES = 200
-XRAY_DISTANCE_TOLERANCE = 1.05
+XRAY_DISTANCE_TOLERANCE = 1.2
 
 # Load your trained model
  
@@ -104,7 +104,7 @@ def build_xray_reference():
 	std_vec = np.std(feat_matrix, axis=0) + 1e-6
 	z = (feat_matrix - mean_vec) / std_vec
 	dists = np.sqrt(np.mean(z * z, axis=1))
-	strict_threshold = float(np.percentile(dists, 90) * XRAY_DISTANCE_TOLERANCE)
+	strict_threshold = float(np.percentile(dists, 97) * XRAY_DISTANCE_TOLERANCE)
 
 	return {
 		"mean": mean_vec,
@@ -126,17 +126,21 @@ def looks_like_xray(img_path):
 		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
 		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
 
-		# Knee X-rays are near-grayscale. Colorful images (face/hand photos) are rejected early.
-		if mean_sat > 0.08 or channel_gap > 0.05:
+		# Colorful photos (face/hand) are usually high saturation and channel difference.
+		if mean_sat > 0.24 and channel_gap > 0.14:
 			return False
+
+		grayscale_like = (mean_sat <= 0.22 and channel_gap <= 0.12)
 
 		if XRAY_REFERENCE is not None:
 			feat = extract_xray_features(img_path)
 			z = (feat - XRAY_REFERENCE["mean"]) / XRAY_REFERENCE["std"]
 			dist = float(np.sqrt(np.mean(z * z)))
-			return dist <= XRAY_REFERENCE["threshold"]
+			if dist <= XRAY_REFERENCE["threshold"]:
+				return True
+			return grayscale_like
 
-		return True
+		return grayscale_like
 	except Exception:
 		return False
 
