@@ -4,6 +4,8 @@ from flask import Flask, render_template, request
 import numpy as np
 import onnxruntime as ort
 import os
+import base64
+import uuid
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -306,14 +308,26 @@ def get_output():
 			error_message = "Only PNG/JPG/JPEG/BMP files are supported."
 		else:
 			filename = secure_filename(img.filename)
-			img_path = os.path.join("static", "tests", filename)
-			img.save(img_path)
+			upload_dir = os.path.join("/tmp", "uploads")
+			os.makedirs(upload_dir, exist_ok=True)
+			temp_filename = f"{uuid.uuid4().hex}_{filename}"
+			temp_img_path = os.path.join(upload_dir, temp_filename)
 
 			try:
-				predict_result, confidence = predict_label(img_path)
+				img.save(temp_img_path)
+
+				with open(temp_img_path, "rb") as f:
+					encoded = base64.b64encode(f.read()).decode("ascii")
+				mime = img.mimetype if img.mimetype else "image/jpeg"
+				img_path = f"data:{mime};base64,{encoded}"
+
+				predict_result, confidence = predict_label(temp_img_path)
 				ai_summary = generate_ai_summary(predict_result, confidence)
 			except Exception:
 				error_message = "Could not process this file. Please upload a valid image."
+			finally:
+				if os.path.exists(temp_img_path):
+					os.remove(temp_img_path)
 
 
 		 
