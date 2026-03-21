@@ -19,7 +19,7 @@ app = Flask(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp"}
 CONFIDENCE_THRESHOLD = 0.55
 MAX_REFERENCE_IMAGES = 200
-XRAY_DISTANCE_TOLERANCE = 1.2
+XRAY_DISTANCE_TOLERANCE = 1.35
 
 # Load your trained model
  
@@ -104,7 +104,7 @@ def build_xray_reference():
 	std_vec = np.std(feat_matrix, axis=0) + 1e-6
 	z = (feat_matrix - mean_vec) / std_vec
 	dists = np.sqrt(np.mean(z * z, axis=1))
-	strict_threshold = float(np.percentile(dists, 97) * XRAY_DISTANCE_TOLERANCE)
+	strict_threshold = float(np.percentile(dists, 99) * XRAY_DISTANCE_TOLERANCE)
 
 	return {
 		"mean": mean_vec,
@@ -126,11 +126,11 @@ def looks_like_xray(img_path):
 		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
 		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
 
-		# Colorful photos (face/hand) are usually high saturation and channel difference.
-		if mean_sat > 0.24 and channel_gap > 0.14:
+		# Reject only obviously colorful photos. Keep this lenient so real X-rays are not blocked.
+		if mean_sat > 0.40 and channel_gap > 0.24:
 			return False
 
-		grayscale_like = (mean_sat <= 0.22 and channel_gap <= 0.12)
+		grayscale_like = (mean_sat <= 0.40 and channel_gap <= 0.24)
 
 		if XRAY_REFERENCE is not None:
 			feat = extract_xray_features(img_path)
@@ -138,6 +138,7 @@ def looks_like_xray(img_path):
 			dist = float(np.sqrt(np.mean(z * z)))
 			if dist <= XRAY_REFERENCE["threshold"]:
 				return True
+			# If distance misses but image still looks grayscale-like, accept to avoid false rejection.
 			return grayscale_like
 
 		return grayscale_like
