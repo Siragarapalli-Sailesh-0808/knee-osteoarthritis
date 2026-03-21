@@ -1,11 +1,8 @@
 
 #!/usr/bin/env python
-# Use TensorFlow 2.15.x (Keras 2) to load knee.h5 — TF 2.16+ / Keras 3 breaks old models.
 from flask import Flask, render_template, request
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import numpy as np
+import onnxruntime as ort
 import os
 from PIL import Image
 from werkzeug.utils import secure_filename
@@ -36,7 +33,8 @@ verbose_name = {
 
  
 
-model = load_model("knee.h5", compile=False)
+session = ort.InferenceSession("knee.onnx", providers=["CPUExecutionProvider"])
+input_name = session.get_inputs()[0].name
 
 
 def allowed_file(filename):
@@ -126,11 +124,12 @@ def looks_like_xray(img_path):
 
 
 def predict_label(img_path):
-	test_image = image.load_img(img_path, target_size=(224,224))
-	test_image = image.img_to_array(test_image)/255.0
-	test_image = test_image.reshape(1, 224,224,3)
+	with Image.open(img_path) as pil_img:
+		rgb = pil_img.convert("RGB").resize((224, 224))
+		test_image = np.array(rgb, dtype=np.float32) / 255.0
 
-	predict_x=model.predict(test_image, verbose=0)
+	test_image = np.expand_dims(test_image, axis=0)
+	predict_x = session.run(None, {input_name: test_image})[0]
 	classes_x=np.argmax(predict_x,axis=1)
 	confidence = float(np.max(predict_x))
 	
