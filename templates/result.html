@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- Basic -->
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <!-- Mobile Metas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <!-- Site Metas -->
+  <meta name="keywords" content="" />
+  <meta name="description" content="" />
+  <meta name="author" content="" />
+  <link rel="shortcut icon" href="../static/images/favicon.png" type="">
+
+  <title>  Knee Osteoarthritis  </title>
+
+  <!-- bootstrap core css -->
+  <link rel="stylesheet" type="text/css" href="../static/css/bootstrap.css" />
+
+  <!-- fonts style -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!--owl slider stylesheet -->
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css" />
+
+  <!-- font awesome style -->
+  <link href="../static/css/font-awesome.min.css" rel="stylesheet" />
+
+  <!-- Custom styles for this template -->
+  <link href="../static/css/style.css" rel="stylesheet" />
+  <!-- responsive style -->
+  <link href="../static/css/responsive.css" rel="stylesheet" />
+
+</head>
+
+<body>
+
+  <div class="hero_area">
+
+    <div class="hero_bg_box">
+      <img src="../static/images/hero-bg.png" alt="">
+    </div>
+
+    <!-- header section strats -->
+    <header class="header_section">
+      <div class="container">
+        <nav class="navbar navbar-expand-lg custom_nav-container ">
+          <a class="navbar-brand" href="{{url_for('first')}}">
+            <span>
+              Knee Osteoarthritis 
+            </span>
+          </a>
+
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class=""> </span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav">
+                
+               <li class="nav-item active">
+                <a class="nav-link" href="{{url_for('first')}}">Home <span class="sr-only">(current)</span></a>
+              </li>
+          
+                <li class="nav-item">
+                <a class="nav-link" href="{{url_for('index')}}"> Preview</a>
+              </li>
+            
+              <li class="nav-item">
+                <a class="nav-link" href="{{url_for('performance')}}"> performance_analysis</a>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </header>
+    <!-- end header section -->
+    <!-- slider section -->
+    <section class="slider_section ">
+      <div id="customCarousel1" class="carousel slide" data-ride="carousel">
+        <div class="carousel-inner">
+          <div class="carousel-item active">
+            <div class="container ">
+              <div class="row">
+                <div class="col-md-7">
+                  <div class="detail-box">
+                    <h1>
+                       Prediction
+                    </h1>
+                    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+       
+        </div>
+        
+      </div>
+
+    </section>
+    <!-- end slider section -->
+  </div>
+
+
+  <!-- department section -->
+  <div class="heading_container heading_center">
+      <div class="container ">
+  
+		
+		<section class="ftco-section ftco-no-pt ftco-no-pb">
+			<div class="container-fluid px-0">
+				<div class="row d-flex no-gutters">
+          <div class="col-md-15  ftco-animate makereservation p-4 p-md-5 pt-5">
+          	 <div class="py-md-5">
+	          	<div class="heading-section ftco-animate mb-5">
+		          <center>	<span class="subheading"> </span></center>
+		           <center> <h2 class="mb-4" style="margin-left:180px">Prediction</h2></center>
+				   
+				   <body>
+  
+  <nav class="root navbar navbar-default navbar-fixed-top">
+    <div class="container-fluid row">
+      <div class="navbar-header col-md-1 col-sm-1">
+          
+      </div>
+      <div class="navbar-header col-md-11 col-sm-11"style="margin-left:180px"><h2 style="font-size: 3.5em;">  <center><h1>Predict Knee Osteoarthritis </h1></center></h1></div>    
+    </div>
+  </nav>
+<center>
+   <div class="content">
+        <div class="container-fluid" style="margin-left:150px" style="background-image: url(images/background1.jpg); background-size: fill;">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card">
+                
+               
+                </div>
+            
+              </div>
+            </div>
+          </div>
+
+
+          <body>
+                    
+           
+            <div class="container-fluid row">
+              <div class="navbar-header col-md-1 col-sm-1">
+               
+              </div>
+             
+                  </h1></div>    
+            </div>
+          </nav>
+         
+           <div class="content">
+                 
+                  <div class="col-lg-12">
+          
+                      {% if prediction %}
+                        <br>
+                        <div style="margin-left:100px">
+                   <img src="{{img_path}}" height="300px" width="300px"></div>
+                        <br>
+                      <br>
+                    <center>    <h2> Prediction is : <i> {{prediction}} </i></h2></center>
+                    {% if confidence is not none %}
+                    <center><h4>Confidence : {{confidence * 100 | round(2)}}%</h4></center>
+                    {% endif %}
+                      
+                        {% endif %}
+
+                        {% if error_message %}
+                        <br>
+                        <center><h3 style="color:#b00020">{{error_message}}</h3></center>
+                        {% endif %}
+
+                        {% if ai_summary %}
+                        <br>
+                        <div style="max-width:900px; margin:0 auto; text-align:left; background:#ffffff; padding:20px; border:1px solid #d9e2ec; border-radius:8px;">
+                          <h3 style="margin-bottom:10px; color:#0b3d5c;">AI Clinical Summary</h3>
+                          <p><b>Severity:</b> {{ai_summary.severity}}</p>
+                          <p><b>Confidence Note:</b> {{ai_summary.confidence_note}}</p>
+
+                          <h4 style="margin-top:16px;">Why It May Have Happened</h4>
+                          <ul>
+                            {% for item in ai_summary.causes %}
+                            <li>{{item}}</li>
+                            {% endfor %}
+                          </ul>
+
+                          <h4 style="margin-top:16px;">Precautions</h4>
+                          <ul>
+                            {% for item in ai_summary.precautions %}
+                            <li>{{item}}</li>
+                            {% endfor %}
+                          </ul>
+
+                          <h4 style="margin-top:16px;">Recommended Next Steps</h4>
+                          <ul>
+                            {% for item in ai_summary.next_steps %}
+                            <li>{{item}}</li>
+                            {% endfor %}
+                          </ul>
+
+                          <h4 style="margin-top:16px; color:#9a3412;">Urgent Warning Signs</h4>
+                          <ul>
+                            {% for item in ai_summary.red_flags %}
+                            <li>{{item}}</li>
+                            {% endfor %}
+                          </ul>
+
+                          <h4 style="margin-top:16px; color:#14532d;">Outstanding AI Features In Your Project</h4>
+                          <ul>
+                            {% for item in ai_summary.standout_features %}
+                            <li>{{item}}</li>
+                            {% endfor %}
+                          </ul>
+
+                          <p style="margin-top:16px; color:#6b7280;"><i>{{ai_summary.disclaimer}}</i></p>
+                        </div>
+                        {% endif %}
+                      </div>
+               
+        
+        </body>	 </div>	
+
+
+
+   
+
+</body>	
+      
+       </center>
+		          </div> 
+ 
+	          </div>
+          </div>
+
+
+
+
+		
+		
+		
+		
+		
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+  <!-- end department section -->
+
+  <!-- about section -->
+
+   
+
+  <!-- footer section -->
+  <footer class="footer_section">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6 col-lg-3 footer_col">
+          <div class="footer_contact">
+            <h4>
+            
+            </h4>
+            
+           
+        </div>
+         
+        
+       
+      </div>
+       
+    </div>
+  </footer>
+  <!-- footer section -->
+
+  <!-- jQery -->
+  <script type="text/javascript" src="../static/js/jquery-3.4.1.min.js"></script>
+  <!-- popper js -->
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous">
+  </script>
+  <!-- bootstrap js -->
+  <script type="text/javascript" src="../static/js/bootstrap.js"></script>
+  <!-- owl slider -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js">
+  </script>
+  <!-- custom js -->
+  <script type="text/javascript" src="../static/js/custom.js"></script>
+  <!-- Google Map -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCh39n5U-4IoWpsVGUHWdqB6puEkhRLdmI&callback=myMap">
+  </script>
+  <!-- End Google Map -->
+
+</body>
+
+</html>
