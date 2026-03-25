@@ -19,7 +19,8 @@ app = Flask(__name__)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "bmp"}
 CONFIDENCE_THRESHOLD = 0.55
 MAX_REFERENCE_IMAGES = 200
-XRAY_DISTANCE_TOLERANCE = 1.35
+XRAY_DISTANCE_TOLERANCE = 1.15
+STRICT_XRAY_THRESHOLD_MULTIPLIER = 1.5  # Stricter threshold for non-knee X-rays detection
 
 # Load your trained model
  
@@ -104,7 +105,13 @@ def build_xray_reference():
 	std_vec = np.std(feat_matrix, axis=0) + 1e-6
 	z = (feat_matrix - mean_vec) / std_vec
 	dists = np.sqrt(np.mean(z * z, axis=1))
-	strict_threshold = float(np.percentile(dists, 99) * XRAY_DISTANCE_TOLERANCE)
+	
+	# Use 95th percentile instead of 99th for stricter threshold (reject outliers more aggressively)
+	# This prevents hand/other X-rays from passing as knee X-rays
+	strict_threshold = float(np.percentile(dists, 95) * 1.2)  # Reduced multiplier from 1.15 to 1.2 base
+	
+	# Additional safeguard: ensure threshold doesn't exceed 1.5 (knee X-rays typically < 1.2)
+	strict_threshold = min(strict_threshold, 1.5)
 
 	return {
 		"mean": mean_vec,
@@ -126,22 +133,39 @@ def looks_like_xray(img_path):
 		mean_sat = float(np.mean(hsv_arr[:, :, 1]))
 		channel_gap = float(np.mean(np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 1]) + np.abs(rgb_arr[:, :, 1] - rgb_arr[:, :, 2]) + np.abs(rgb_arr[:, :, 0] - rgb_arr[:, :, 2])) / 3.0)
 
-		# Reject only obviously colorful photos. Keep this lenient so real X-rays are not blocked.
-		if mean_sat > 0.40 and channel_gap > 0.24:
+		# STRICT: Reject images with color - must be grayscale for X-rays
+		if mean_sat > 0.25 or channel_gap > 0.15:
 			return False
 
-		grayscale_like = (mean_sat <= 0.40 and channel_gap <= 0.24)
-
+		# STRICT: Additional grayscale check - compute gray image stats
+		with Image.open(img_path) as pil_img:
+			gray = pil_img.convert("L")
+			gray_arr = np.array(gray, dtype=np.float32) / 255.0
+		
+		# X-rays typically have wide distribution of pixel values
+		# Reject if too dark (mean < 0.15) or too light (mean > 0.85)
+		gray_mean = float(np.mean(gray_arr))
+		gray_std = float(np.std(gray_arr))
+		
+		if gray_mean < 0.1 or gray_mean > 0.9:
+			return False  # Image is too extremely dark or bright
+		
+		if gray_std < 0.08:
+			return False  # No variation - likely not an X-ray
+		
+		# STRICT: Must match reference knee X-rays from training data
 		if XRAY_REFERENCE is not None:
 			feat = extract_xray_features(img_path)
 			z = (feat - XRAY_REFERENCE["mean"]) / XRAY_REFERENCE["std"]
 			dist = float(np.sqrt(np.mean(z * z)))
+			# Only accept if matches reference with strict threshold
 			if dist <= XRAY_REFERENCE["threshold"]:
 				return True
-			# If distance misses but image still looks grayscale-like, accept to avoid false rejection.
-			return grayscale_like
+			# Reject if doesn't match reference - no fallback
+			return False
 
-		return grayscale_like
+		# If no reference available, require strict grayscale characteristics
+		return (mean_sat <= 0.25 and channel_gap <= 0.15 and gray_std >= 0.08)
 	except Exception:
 		return False
 
